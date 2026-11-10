@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宏普陽明驗屋預約登記系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .slot-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .slot-btn.selected {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        .slot-btn.disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            border-color: #e5e7eb;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-5 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">宏普陽明驗屋預約登記系統</h1>
+                <p class="text-indigo-200 text-sm mt-1">開放預約期間：1/11 ~ 2/3 (僅限平日週一至週五)</p>
+            </div>
+            <button id="navToggleBtn" onclick="toggleView()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm border border-indigo-400 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span id="navToggleText">預約紀錄管理</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
+        
+        <!-- Form View (住戶填寫頁面) -->
+        <section id="formView" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div class="border-b border-slate-100 pb-4 mb-6">
+                <h2 class="text-xl font-bold text-slate-800">新增預約資料</h2>
+                <p class="text-slate-500 text-sm mt-1">請填寫以下資訊，每個戶別限登記一次。</p>
+            </div>
+
+            <form id="bookingForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
+                <!-- 戶別 -->
+                <div>
+                    <label for="household" class="block text-sm font-semibold text-slate-700 mb-1">
+                        戶別 <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="household" placeholder="格式範例：A01-01" required
+                        oninput="validateHouseholdInput(this)"
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition uppercase">
+                    <p id="householdHint" class="text-xs text-slate-500 mt-1">請依照大寫英文字母 + 2位數字 - 2位數字格式填寫 (如 A01-01)</p>
+                    <p id="householdError" class="text-xs text-red-500 mt-1 hidden font-medium"></p>
+                </div>
+
+                <!-- 姓名 -->
+                <div>
+                    <label for="userName" class="block text-sm font-semibold text-slate-700 mb-1">
+                        姓名 <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="userName" placeholder="請輸入聯絡人姓名" required
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                </div>
+
+                <!-- 連絡電話 -->
+                <div>
+                    <label for="userPhone" class="block text-sm font-semibold text-slate-700 mb-1">
+                        連絡電話 <span class="text-red-500">*</span>
+                    </label>
+                    <input type="tel" id="userPhone" placeholder="例如：0912345678" required
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                </div>
+
+                <!-- 預約日期 -->
+                <div>
+                    <label for="bookingDate" class="block text-sm font-semibold text-slate-700 mb-1">
+                        預約日期 <span class="text-red-500">*</span> (僅開放 1/11 ~ 2/3 之平日)
+                    </label>
+                    <input type="date" id="bookingDate" required
+                        min="2026-01-11" max="2026-02-03"
+                        onchange="onDateChange()"
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                    <p id="dateError" class="text-xs text-red-500 mt-1 hidden font-medium"></p>
+                </div>
+
+                <!-- 預約時段 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">
+                        預約時段 <span class="text-red-500">*</span>
+                    </label>
+                    <div id="slotNotice" class="text-sm text-slate-500 mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        請先選擇「預約日期」以查看各時段剩餘名額。
+                    </div>
+                    <div id="timeSlotsGroup" class="grid grid-cols-1 sm:grid-cols-3 gap-3 hidden">
+                        <!-- 09:30 Slot -->
+                        <button type="button" id="slot-0930" onclick="selectSlot('09:30')"
+                            class="slot-btn p-3 rounded-xl border border-slate-200 text-left flex flex-col justify-between h-20">
+                            <span class="font-bold text-base">09:30</span>
+                            <span id="quota-0930" class="text-xs font-normal">上限 3 組</span>
+                        </button>
+                        <!-- 13:30 Slot -->
+                        <button type="button" id="slot-1330" onclick="selectSlot('13:30')"
+                            class="slot-btn p-3 rounded-xl border border-slate-200 text-left flex flex-col justify-between h-20">
+                            <span class="font-bold text-base">13:30</span>
+                            <span id="quota-1330" class="text-xs font-normal">上限 2 組</span>
+                        </button>
+                        <!-- 15:30 Slot -->
+                        <button type="button" id="slot-1530" onclick="selectSlot('15:30')"
+                            class="slot-btn p-3 rounded-xl border border-slate-200 text-left flex flex-col justify-between h-20">
+                            <span class="font-bold text-base">15:30</span>
+                            <span id="quota-1530" class="text-xs font-normal">上限 2 組</span>
+                        </button>
+                    </div>
+                    <p id="slotError" class="text-xs text-red-500 mt-1 hidden font-medium">請選擇一個可預約的時段</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    確認送出預約
+                </button>
+            </form>
+        </section>
+
+        <!-- Admin / View Section (管理後台) -->
+        <section id="adminView" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-slate-800">預約紀錄管理</h2>
+                            <span class="bg-green-100 text-green-700 text-xs px-2.5 py-0.5 rounded-full font-medium">已通過驗證</span>
+                        </div>
+                        <p class="text-slate-500 text-sm mt-1">即時檢視與管理所有已登記的戶別名單</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadSampleData()" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg transition">
+                            載入測試資料
+                        </button>
+                        <button onclick="clearAllBookings()" class="px-3 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition">
+                            清空全部資料
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter / Search Bar -->
+                <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="searchInput" oninput="renderAdminTable()" placeholder="搜尋戶別、姓名或電話..."
+                        class="flex-1 px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Booking List Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                            <tr>
+                                <th class="px-6 py-3.5">戶別</th>
+                                <th class="px-6 py-3.5">姓名</th>
+                                <th class="px-6 py-3.5">連絡電話</th>
+                                <th class="px-6 py-3.5">預約日期</th>
+                                <th class="px-6 py-3.5">預約時段</th>
+                                <th class="px-6 py-3.5 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingTableBody" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyState" class="p-8 text-center text-slate-400 hidden">
+                    目前尚無任何預約紀錄。
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+        宏普建設股份有限公司 &copy; 版權所有
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // ==========================================
+        // CONSTANTS & CONFIGURATION
+        // ==========================================
+        // 預設管理員密碼
+        const ADMIN_PASSWORD = 'Hp27552662';
+        
+        // 開放預約日期範圍 (1/11 ~ 2/3)
+        const START_DATE_STR = '2026-01-11';
+        const END_DATE_STR = '2026-02-03';
+
+        // 各時段最大組數限制
+        const TIME_SLOT_LIMITS = {
+            '09:30': 3,
+            '13:30': 2,
+            '15:30': 2
+        };
+
+        // 戶別格式 (大寫英文字母 + 2位數字 - 2位數字，例如 A01-01)
+        const HOUSEHOLD_REGEX = /^[A-Z]\d{2}-\d{2}$/;
+
+        // State Variables
+        let selectedSlot = '';
+        let isAdminLoggedIn = false;
+
+        // ==========================================
+        // INITIALIZATION & EVENT LISTENERS
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initLocalStorage();
+        });
+
+        function initLocalStorage() {
+            if (!localStorage.getItem('community_bookings')) {
+                localStorage.setItem('community_bookings', JSON.stringify([]));
+            }
+        }
+
+        function getBookings() {
+            return JSON.parse(localStorage.getItem('community_bookings') || '[]');
+        }
+
+        function saveBookings(bookings) {
+            localStorage.setItem('community_bookings', JSON.stringify(bookings));
+        }
+
+        // ==========================================
+        // VIEW TOGGLING & AUTHENTICATION
+        // ==========================================
+        function toggleView() {
+            const formView = document.getElementById('formView');
+            const adminView = document.getElementById('adminView');
+            const navToggleText = document.getElementById('navToggleText');
+
+            if (formView.classList.contains('hidden')) {
+                // 從後台切換回前台
+                formView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+                navToggleText.textContent = '預約紀錄管理';
+            } else {
+                // 從前台欲進入後台：檢查驗證
+                if (!isAdminLoggedIn) {
+                    const inputPassword = prompt('【管理員驗證】\n請輸入管理員密碼以進入後台：');
+                    if (inputPassword === null) return; // 使用者按取消
+
+                    if (inputPassword === ADMIN_PASSWORD) {
+                        isAdminLoggedIn = true;
+                        alert('密碼驗證成功！');
+                    } else {
+                        alert('密碼錯誤！無法進入管理後台。');
+                        return;
+                    }
+                }
+
+                // 驗證通過，進入後台
+                formView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                navToggleText.textContent = '登出管理員';
+                renderAdminTable();
+            }
+        }
+
+        // ==========================================
+        // FORM VALIDATION & LOGIC
+        // ==========================================
+        function validateHouseholdInput(input) {
+            // 自動轉換為大寫
+            input.value = input.value.toUpperCase();
+            
+            const household = input.value.trim();
+            const errorEl = document.getElementById('householdError');
+            const hintEl = document.getElementById('householdHint');
+
+            if (!household) {
+                errorEl.classList.add('hidden');
+                hintEl.classList.remove('hidden');
+                return false;
+            }
+
+            // 1. 檢查格式是否符合規範
+            if (!HOUSEHOLD_REGEX.test(household)) {
+                errorEl.textContent = '格式錯誤！請輸入 字母+2位數字-2位數字（例如：A01-01）';
+                errorEl.classList.remove('hidden');
+                hintEl.classList.add('hidden');
+                return false;
+            }
+
+            // 2. 檢查是否重複填寫
+            const bookings = getBookings();
+            const isDuplicate = bookings.some(b => b.household.toUpperCase() === household);
+
+            if (isDuplicate) {
+                errorEl.textContent = '此戶別已登記預約，無法重複填寫！';
+                errorEl.classList.remove('hidden');
+                hintEl.classList.add('hidden');
+                return false;
+            } else {
+                errorEl.classList.add('hidden');
+                hintEl.classList.remove('hidden');
+                return true;
+            }
+        }
+
+        function onDateChange() {
+            const dateInput = document.getElementById('bookingDate');
+            const dateVal = dateInput.value;
+            const dateError = document.getElementById('dateError');
+            const slotGroup = document.getElementById('timeSlotsGroup');
+            const slotNotice = document.getElementById('slotNotice');
+
+            selectedSlot = '';
+            resetSlotStyles();
+
+            if (!dateVal) {
+                slotGroup.classList.add('hidden');
+                slotNotice.classList.remove('hidden');
+                return;
+            }
+
+            const chosenDate = new Date(dateVal + 'T00:00:00');
+            const dayOfWeek = chosenDate.getDay();
+
+            // 檢查週六(6)與週日(0)
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                dateError.textContent = '目前僅開放平日（週一至週五）預約，請重新選擇日期。';
+                dateError.classList.remove('hidden');
+                dateInput.value = '';
+                slotGroup.classList.add('hidden');
+                slotNotice.classList.remove('hidden');
+                return;
+            }
+
+            dateError.classList.add('hidden');
+            slotNotice.classList.add('hidden');
+            slotGroup.classList.remove('hidden');
+
+            updateSlotAvailability(dateVal);
+        }
+
+        function updateSlotAvailability(dateStr) {
+            const bookings = getBookings().filter(b => b.date === dateStr);
+            
+            // 計算各時段已預約組數
+            const counts = { '09:30': 0, '13:30': 0, '15:30': 0 };
+            bookings.forEach(b => {
+                if (counts[b.timeSlot] !== undefined) {
+                    counts[b.timeSlot]++;
+                }
+            });
+
+            // 更新按鈕狀態
+            Object.keys(TIME_SLOT_LIMITS).forEach(slotKey => {
+                const limit = TIME_SLOT_LIMITS[slotKey];
+                const currentCount = counts[slotKey];
+                const remain = limit - currentCount;
+                
+                const slotBtn = document.getElementById(`slot-${slotKey.replace(':', '')}`);
+                const quotaSpan = document.getElementById(`quota-${slotKey.replace(':', '')}`);
+
+                if (remain <= 0) {
+                    slotBtn.className = 'slot-btn disabled p-3 rounded-xl border text-left flex flex-col justify-between h-20';
+                    slotBtn.disabled = true;
+                    quotaSpan.textContent = '已額滿 (0/0)';
+                } else {
+                    slotBtn.className = 'slot-btn p-3 rounded-xl border border-slate-200 text-left flex flex-col justify-between h-20 hover:border-indigo-400';
+                    slotBtn.disabled = false;
+                    quotaSpan.textContent = `剩餘 ${remain} 組 (上限 ${limit} 組)`;
+                }
+            });
+        }
+
+        function selectSlot(timeSlot) {
+            const btnKey = timeSlot.replace(':', '');
+            const targetBtn = document.getElementById(`slot-${btnKey}`);
+            
+            if (targetBtn.disabled) return;
+
+            selectedSlot = timeSlot;
+            resetSlotStyles();
+
+            targetBtn.classList.add('selected');
+            document.getElementById('slotError').classList.add('hidden');
+        }
+
+        function resetSlotStyles() {
+            const slots = ['0930', '1330', '1530'];
+            slots.forEach(key => {
+                const btn = document.getElementById(`slot-${key}`);
+                if (!btn.disabled) {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const householdInput = document.getElementById('household');
+            const nameInput = document.getElementById('userName');
+            const phoneInput = document.getElementById('userPhone');
+            const dateInput = document.getElementById('bookingDate');
+
+            // 再次驗證戶別
+            const isHouseholdValid = validateHouseholdInput(householdInput);
+            if (!isHouseholdValid) {
+                householdInput.focus();
+                return;
+            }
+
+            // 驗證時段
+            if (!selectedSlot) {
+                document.getElementById('slotError').classList.remove('hidden');
+                return;
+            }
+
+            const newBooking = {
+                id: Date.now().toString(),
+                household: householdInput.value.trim().toUpperCase(),
+                name: nameInput.value.trim(),
+                phone: phoneInput.value.trim(),
+                date: dateInput.value,
+                timeSlot: selectedSlot,
+                createdAt: new Date().toLocaleString()
+            };
+
+            const bookings = getBookings();
+            bookings.push(newBooking);
+            saveBookings(bookings);
+
+            alert(`預約成功！\n戶別：${newBooking.household}\n日期：${newBooking.date}\n時段：${newBooking.timeSlot}`);
+
+            // 重設表單
+            document.getElementById('bookingForm').reset();
+            selectedSlot = '';
+            document.getElementById('timeSlotsGroup').classList.add('hidden');
+            document.getElementById('slotNotice').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // ADMIN MANAGEMENT LOGIC
+        // ==========================================
+        function renderAdminTable() {
+            const tbody = document.getElementById('bookingTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            let bookings = getBookings();
+
+            if (searchVal) {
+                bookings = bookings.filter(b => 
+                    b.household.toLowerCase().includes(searchVal) ||
+                    b.name.toLowerCase().includes(searchVal) ||
+                    b.phone.includes(searchVal)
+                );
+            }
+
+            tbody.innerHTML = '';
+
+            if (bookings.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            bookings.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-slate-800">${b.household}</td>
+                    <td class="px-6 py-4">${b.name}</td>
+                    <td class="px-6 py-4">${b.phone}</td>
+                    <td class="px-6 py-4">${b.date}</td>
+                    <td class="px-6 py-4">
+                        <span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md font-semibold text-xs border border-indigo-100">
+                            ${b.timeSlot}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteBooking('${b.id}')" class="text-red-500 hover:text-red-700 text-xs font-medium">
+                            刪除
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteBooking(id) {
+            if (!confirm('確定要刪除這筆預約紀錄嗎？')) return;
+
+            let bookings = getBookings();
+            bookings = bookings.filter(b => b.id !== id);
+            saveBookings(bookings);
+            renderAdminTable();
+        }
+
+        function clearAllBookings() {
+            if (!confirm('警告：確定要清空「所有」預約紀錄嗎？此動作無法復原！')) return;
+            saveBookings([]);
+            renderAdminTable();
+        }
+
+        function loadSampleData() {
+            const sampleData = [
+                { id: '1', household: 'A01-01', name: '王小明', phone: '0912345678', date: '2026-01-12', timeSlot: '09:30', createdAt: '2026-01-01 10:00' },
+                { id: '2', household: 'A01-02', name: '陳美麗', phone: '0987654321', date: '2026-01-12', timeSlot: '09:30', createdAt: '2026-01-01 11:00' },
+                { id: '3', household: 'B02-05', name: '張大華', phone: '0922333444', date: '2026-01-12', timeSlot: '09:30', createdAt: '2026-01-01 12:00' },
+                { id: '4', household: 'C03-01', name: '林志豪', phone: '0955666777', date: '2026-01-12', timeSlot: '13:30', createdAt: '2026-01-01 13:00' }
+            ];
+            saveBookings(sampleData);
+            renderAdminTable();
+            alert('已成功載入測試資料！');
+        }                
+    </script>
+</body>
+</html>
